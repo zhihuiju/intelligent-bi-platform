@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: yubi-backend
+
+langchain4j:
+  community:
+    dashscope:
+      chat-model:
+        model-name: qwen-max
+        api-key: sk-eba0ed4dd2b94982a25d1d6a4fb4bed6
+      embedding-model:
+        model-name: text-embedding-v4
+        #        model-name: tongyi-embedding-vision-flash
+        api-key: sk-eba0ed4dd2b94982a25d1d6a4fb4bed6
+      streaming-chat-model:
+        model-name: qwen-max
+        api-key: sk-eba0ed4dd2b94982a25d1d6a4fb4bed6
+
+bigmodel:
+  api-ley: 1bef0741bca840edaad1271c546183c1.ylonbtKEgfe0EALY

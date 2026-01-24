@@ -1,0 +1,25 @@
+# 前端忽略文件
+yubi-frontend-40d9ec9f56fb71e4e777f1d601df39fb76fb37ab/node_modules/
+yubi-frontend-40d9ec9f56fb71e4e777f1d601df39fb76fb37ab/dist/
+yubi-frontend-40d9ec9f56fb71e4e777f1d601df39fb76fb37ab/.env.local
+yubi-frontend-40d9ec9f56fb71e4e777f1d601df39fb76fb37ab/.env.development.local
+yubi-frontend-40d9ec9f56fb71e4e777f1d601df39fb76fb37ab/.env.test.local
+yubi-frontend-40d9ec9f56fb71e4e777f1d601df39fb76fb37ab/.env.production.local
+yubi-frontend-40d9ec9f56fb71e4e777f1d601df39fb76fb37ab/npm-debug.log*
+yubi-frontend-40d9ec9f56fb71e4e777f1d601df39fb76fb37ab/yarn-debug.log*
+yubi-frontend-40d9ec9f56fb71e4e777f1d601df39fb76fb37ab/yarn-error.log*
+yubi-frontend-40d9ec9f56fb71e4e777f1d601df39fb76fb37ab/pnpm-debug.log*
+yubi-frontend-40d9ec9f56fb71e4e777f1d601df39fb76fb37ab/lerna-debug.log*
+
+# 后端忽略文件
+yubi-backend/target/
+yubi-backend/.idea/
+yubi-backend/*.iml
+yubi-backend/*.log
+yubi-backend/src/main/resources/application-dev.yml
+yubi-backend/src/main/resources/application-prod.yml
+yubi-backend/src/main/resources/application-test.yml
+
+# 通用忽略文件
+.DS_Store
+Thumbs.db
