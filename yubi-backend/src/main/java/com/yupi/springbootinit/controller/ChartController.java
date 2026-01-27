@@ -37,6 +37,8 @@ import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.io.File;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ThreadPoolExecutor;
 
 import static com.yupi.springbootinit.utils.DataCleanUtils.cleanAndStandardizeGenChart;
 import static com.yupi.springbootinit.utils.DataCleanUtils.cleanGenResult;
@@ -63,6 +65,9 @@ public class ChartController {
 
     @Resource
     private RedisLimiterManager redisLimiterManager;
+
+    @Resource
+    private ThreadPoolExecutor threadPoolExecutor;  //线程池
 
     private final static Gson GSON = new Gson();
 
@@ -227,9 +232,8 @@ public class ChartController {
         return ResultUtils.success(result);
     }
 
-
     /**
-     * 智能分析
+     * 智能分析（同步）
      *
      * @param multipartFile
      * @param genChartByAiRequest
@@ -238,7 +242,7 @@ public class ChartController {
      */
     @PostMapping("/gen")
     public BaseResponse<BiResponse> genChartByAi(@RequestPart("file") MultipartFile multipartFile,
-                                             GenChartByAiRequest genChartByAiRequest, HttpServletRequest request) {
+                                                 GenChartByAiRequest genChartByAiRequest, HttpServletRequest request) {
         String name = genChartByAiRequest.getName();
         String goal = genChartByAiRequest.getGoal();
         String chartType = genChartByAiRequest.getChartType();
@@ -320,6 +324,115 @@ public class ChartController {
         return ResultUtils.success(biResponse);
     }
 
+    /**
+     * 智能分析(异步)
+     *
+     * @param multipartFile
+     * @param genChartByAiRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/gen/async")
+    public BaseResponse<BiResponse> genChartByAiAsync(@RequestPart("file") MultipartFile multipartFile,
+                                             GenChartByAiRequest genChartByAiRequest, HttpServletRequest request) {
+        String name = genChartByAiRequest.getName();
+        String goal = genChartByAiRequest.getGoal();
+        String chartType = genChartByAiRequest.getChartType();
+        // 校验
+        ThrowUtils.throwIf(StringUtils.isBlank(goal) , ErrorCode.PARAMS_ERROR,"目标为空");
+        ThrowUtils.throwIf(StringUtils.isNotBlank(name)&& name.length() > 100,ErrorCode.PARAMS_ERROR,"名称过长");
+        User loginUser = userService.getLoginUser(request);  // 获取登录用户
+        //限流，每个用户一个限流器
+        redisLimiterManager.doRateLimit("genChartByAi_" + loginUser.getId());
+        //系统提示词
+        final String prompt = "你是一个数据分析师和前端开发专家，接下来我会按照以下固定格式给你提供内容：\n" +
+                "\n" +
+                "分析需求：\n" +
+                "(数据分析的需求或者目标)\n" +
+                "原始数据：\n" +
+                "(csv格式的原始数据，用,作为分隔符)\n" +
+                "\n" +
+                "请根据这两部分内容，按照以下指定格式生成内容（此外不要输出任何多余的开头、结尾、注释）\n" +
+                "【】【】【】【】\n" +
+                "{前端Echarts V5 的 option 配置对象格式化的JSON代码，合理地将数据进行可视化，不要生成任何多余的内容，比如注释}\n" +
+                "【】【】【】【】\n" +
+                "{明确的数据分析结论、越详细越好，不要生成多余的注释}";
+
+        //用户输入
+        StringBuilder userInput = new StringBuilder();
+        userInput.append(prompt).append("\n");
+        //拼接分析目标
+        String usergoal = goal;
+        if(StringUtils.isNotBlank(chartType)) {
+            usergoal += "，请使用" + chartType + "图表";
+        }
+        userInput.append("分析目标").append(usergoal).append("\n");
+
+        //压缩后的数据
+        String csvresult = ExcelUtils.excelToCsv(multipartFile);  // 将 Excel 文件转换为 CSV 字符串
+        //拼接数据
+        userInput.append("数据：").append(csvresult).append("\n");
+//        return ResultUtils.success(userInput.toString());  // 返回转换后的 CSV 字符串
+
+        //插入数据到数据库
+        Chart chart = new Chart();
+        chart.setName(name);
+        chart.setGoal(goal);
+        chart.setChartData(csvresult);
+        chart.setChartType(chartType);
+        chart.setStatus("wait");
+        chart.setUserId(loginUser.getId());
+        boolean saveResult = chartService.save(chart);
+        ThrowUtils.throwIf(!saveResult, ErrorCode.SYSTEM_ERROR, "数据库插入失败");
+
+        //线程池实现异步化  建议添加处理任务队列满后，抛异常的情况
+        CompletableFuture.runAsync(()->{
+            //先修改图标任务状态为“执行中”，等执行完成后，修改为“已完成”，保存执行结果；执行失败后，状态修改为“失败”，记录任务状态信息
+            Chart updateChart = new Chart();
+            updateChart.setId(chart.getId());
+            updateChart.setStatus("running");
+            boolean b = chartService.updateById(updateChart);
+            if(!b){
+                hadleChartUpdateError(chart.getId(), "图标状态running更新失败");
+                return;
+            }
+
+            //调用大模型
+            String response = openAiApi.doChat(userInput.toString());
+            // 分割字符串
+            String[] parts = response.split("【】【】【】【】");
+            // 提取图表配置和分析结论
+            String genChart = parts[1].trim();
+            String genResult = parts[2].trim();
+
+            Chart updateChartResult = new Chart();
+            updateChartResult.setId(chart.getId());
+            updateChartResult.setGenChart(genChart);
+            updateChartResult.setGenResult(genResult);
+            updateChartResult.setStatus("success");
+            boolean updateResult = chartService.updateById(updateChartResult);
+            if(!updateResult){
+                hadleChartUpdateError(chart.getId(), "图表状态success更新失败");
+            }
+        },threadPoolExecutor);
+
+        // 封装响应
+        BiResponse biResponse = new BiResponse();
+        biResponse.setChartId(chart.getId());
+        return ResultUtils.success(biResponse);
+    }
+
+    private void hadleChartUpdateError(long chartId,String execMessage){
+
+        Chart updateChartResult = new Chart();
+        updateChartResult.setId(chartId);
+        updateChartResult.setStatus("failed");
+        updateChartResult.setExecMessage("execMessage");
+        boolean updateResult = chartService.updateById(updateChartResult);
+        if(!updateResult){
+            log.error("更新图表失败状态失败"+chartId+","+execMessage);
+        }
+    }
 
 
     /**
