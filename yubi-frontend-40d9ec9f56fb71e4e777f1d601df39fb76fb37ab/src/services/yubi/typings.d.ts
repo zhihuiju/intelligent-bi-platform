@@ -153,6 +153,12 @@ declare namespace API {
     name?: string;
   };
 
+  type genChartByAiAsyncUsingPOSTParams = {
+    chartType?: string;
+    goal?: string;
+    name?: string;
+  };
+
   type getChartByIdUsingGETParams = {
     /** id */
     id?: number;

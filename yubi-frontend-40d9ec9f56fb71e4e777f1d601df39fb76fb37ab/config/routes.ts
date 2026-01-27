@@ -9,7 +9,14 @@ export default [
   },
   { path: '/', redirect: '/add_chart' },
   { path: '/add_chart', name: '智能分析', icon: 'barChart', component: './AddChart' },
+  {
+    path: '/add_chart_async',
+    name: '智能分析(异步)',
+    icon: 'barChart',
+    component: './AddChartAsync',
+  },
   { path: '/my_chart', name: '我的图表', icon: 'pieChart', component: './MyChart' },
+  { path: '/my_chart_async', name: '我的图表(异步)', icon: 'pieChart', component: './MyChartAsync' },
   { path: '/dashboard', name: '仪表盘', icon: 'dashboard', component: './Dashboard' },
   { path: '/ai_chat', name: '智能对话', icon: 'message', component: './AiChat' },
   {
