@@ -500,40 +500,14 @@ public class ChartController {
         boolean saveResult = chartService.save(chart);
         ThrowUtils.throwIf(!saveResult, ErrorCode.SYSTEM_ERROR, "数据库插入失败");
 
-        //线程池实现异步化  建议添加处理任务队列满后，抛异常的情况
-        CompletableFuture.runAsync(()->{
-            //先修改图标任务状态为“执行中”，等执行完成后，修改为“已完成”，保存执行结果；执行失败后，状态修改为“失败”，记录任务状态信息
-            Chart updateChart = new Chart();
-            updateChart.setId(chart.getId());
-            updateChart.setStatus("running");
-            boolean b = chartService.updateById(updateChart);
-            if(!b){
-                hadleChartUpdateError(chart.getId(), "图标状态running更新失败");
-                return;
-            }
+        //让生产者将图表ID传递给消息队列，然后再让消费者取出ID后，获取相应信息，实现数据分析逻辑
+        long newChartId = chart.getId();
+        biMessageProducer.sendMessage(String.valueOf(newChartId));
 
-            //调用大模型
-            String response = openAiApi.doChat(userInput.toString());
-            // 分割字符串
-            String[] parts = response.split("【】【】【】【】");
-            // 提取图表配置和分析结论
-            String genChart = parts[1].trim();
-            String genResult = parts[2].trim();
-
-            Chart updateChartResult = new Chart();
-            updateChartResult.setId(chart.getId());
-            updateChartResult.setGenChart(genChart);
-            updateChartResult.setGenResult(genResult);
-            updateChartResult.setStatus("success");
-            boolean updateResult = chartService.updateById(updateChartResult);
-            if(!updateResult){
-                hadleChartUpdateError(chart.getId(), "图表状态success更新失败");
-            }
-        },threadPoolExecutor);
 
         // 封装响应
         BiResponse biResponse = new BiResponse();
-        biResponse.setChartId(chart.getId());
+        biResponse.setChartId(newChartId);
         return ResultUtils.success(biResponse);
     }
 
