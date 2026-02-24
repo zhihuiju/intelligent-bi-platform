@@ -1,7 +1,22 @@
 # 智能BI数据分析平台
 
 ## 项目简介
-基于AI大模型的智能数据分析平台，支持用户上传Excel数据，自动生成可视化图表并提供智能分析结论。
++ 本项目是一套 "智能数据分析与可视化系统" ，旨在为用户提供直观、高效的数据洞察工具。系统支持用户查看和管理图表列表，通过可视化展示数据趋势，结合AI对话功能辅助分析，帮助用户快速理解数据背后的业务价值。
++ 系统解决了传统数据分析工具操作复杂、响应缓慢的问题，适用于企业和组织的业务决策场景，可帮助用户从海量数据中提取关键信息，提升决策效率和准确性。
+
+### 界面展示
+![alt text](./public/images/image-1.png)
+
+![alt text](./public/images/image-2.png)
+
+![alt text](./public/images/image-3.png)
+
+![alt text](./public/images/image-4.png)
+
+![alt text](./public/images/image-5.png)
+
+![alt text](./public/images/image-6.png)
+
 
 ## 技术栈
 
